@@ -1,0 +1,16 @@
+# Environnement
+.venv/
+__pycache__/
+.ipynb_checkpoints/
+.DS_Store
+
+# Données et sorties d'entraînement (trop volumineuses)
+**/data/
+**/runs/
+*.pt
+*.pth
+
+# Documents de travail personnels
+*.docx
+~$*
+_journal/
