@@ -131,6 +131,8 @@ def main():
             best_acc = m["acc_variant"]
             torch.save({"state_dict": model.state_dict(), "config": vars(args), "epoch": epoch, "val": m}, run_dir / "best.pt")
     writer.close()
+    if not args.max_batches:
+        (run_dir / ".done").touch()  # src.evaluate ne prend que les runs terminés
     print(f"[{name}] terminé, meilleure accuracy variante en validation : {best_acc:.3f}", flush=True)
 
 

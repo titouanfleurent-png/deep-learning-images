@@ -16,7 +16,7 @@ from .engine import RESULTS_DIR, RUNS_DIR, load_data
 from .metrics import bootstrap_diff
 
 MODELS = ["flat", "hier", "soft"]
-NAMES = {"flat": "Plat", "hier": "Hiérarchique", "soft": "Soft labels"}
+NAMES = {"flat": "Plat", "hier": "3 têtes", "soft": "Soft labels"}
 COLORS = {"flat": "#2a78d6", "hier": "#eb6834", "soft": "#1baf7a"}
 SEEDS = [0, 1, 2]
 INK, MUTED, GRID = "#0b0b0b", "#52514e", "#e4e3df"

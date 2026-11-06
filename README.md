@@ -1,139 +1,154 @@
-# Deep learning appliqué aux images
+# Deep learning sur les images
 
-Deux projets de vision par ordinateur réalisés dans le cadre d'un cours de deep learning (CNAM). Ils sont développés en PyTorch et entraînés sur un MacBook Air M4, via le GPU Apple (MPS).
+Mes 2 projets de deep learning pour mon cours au CNAM (vision par ordinateur, environ 20 h par projet). Tout est fait en PyTorch et entraîné sur un MacBook Air M4.
 
-| | Projet 1 : avions | Projet 2 : football |
+| | Projet 1 : avions | Projet 2 : foot |
 |---|---|---|
-| **Tâche** | Classification fine et hiérarchique | Détection d'objets |
-| **Question** | Un CNN qui exploite la hiérarchie des classes fait-il des erreurs moins graves ? | Pourquoi le ballon est-il si dur à détecter, et comment l'améliorer ? |
+| **Le but** | Reconnaître un avion sur une photo | Détecter les joueurs, les arbitres et le ballon |
+| **Type de tâche** | Classification | Détection d'objets |
 | **Données** | FGVC-Aircraft | Roboflow *football-players-detection* |
-| **Modèle** | EfficientNet-B0 pré-entraîné : plat, 3 têtes, soft labels | YOLO11 pré-entraîné sur COCO |
-| **Statut** | Terminé (hors test sur photos externes) | À venir |
+| **Modèle** | EfficientNet-B0 | YOLO11 |
+| **Où j'en suis** | Terminé | Pas encore commencé |
 
 ---
 
-## ✈️ Projet 1 : reconnaissance d'avions en hiérarchie
+## Projet 1 : reconnaître un avion à 3 niveaux
 
-L'objectif est de reconnaître le modèle d'un avion sur une photo, à trois niveaux : **constructeur** (30 classes), **famille** (70) et **variante** (100). Exemple : *Boeing > 737 > 737-800*.
+Le modèle doit trouver le constructeur, la famille et la variante d'un avion (par exemple Boeing > 737 > 737-800). Le dataset a 30 constructeurs, 70 familles et 100 variantes.
 
-### Article de référence
+**La question de départ :** toutes les erreurs ne se valent pas. Confondre un 737-800 avec un 737-900, ce n'est pas très grave. Le confondre avec un Airbus A320, si. Est-ce qu'on peut faire moins d'erreurs graves en donnant au réseau la hiérarchie des avions ?
 
-**Maji, S., Rahtu, E., Kannala, J., Blaschko, M., & Vedaldi, A. (2013). *Fine-Grained Visual Classification of Aircraft*.**
-📄 [arXiv:1306.5151](https://arxiv.org/abs/1306.5151)
+**Le résultat :** oui. Le nombre d'erreurs graves baisse de 14 à 16 %, et le modèle ne reconnaît pas moins de variantes pour autant.
 
-- **Contribution** : le dataset FGVC-Aircraft. Il contient 10 000 photos d'avions, annotées sur 3 niveaux hiérarchiques, avec 3 splits égaux (train, val, test).
-- **Difficulté** : les différences entre variantes sont minuscules (hublots, winglets, moteurs), alors que la livrée des compagnies varie énormément d'une photo à l'autre.
+Pour tout le détail : [le rapport en PDF](projet1_avions/report/Rapport_projet1_avions.pdf) (6 pages).
 
-**Architecture utilisée dans l'article** (baseline antérieure au deep learning) :
+### Les 3 modèles comparés
 
-```mermaid
-flowchart LR
-    A[Image] --> B[SIFT dense<br/>multi-échelle]
-    B --> C[Sac de mots visuels<br/>k-means, 600 mots]
-    C --> D[Pyramide spatiale<br/>1×1 + 2×2]
-    D --> E[SVM non linéaire<br/>noyau χ²]
-    E --> F[Variante]
-```
+Les 3 modèles utilisent le même réseau (EfficientNet-B0 pré-entraîné sur ImageNet) et les mêmes réglages. Seule la façon de lui donner la hiérarchie change :
 
-### Approche de ce projet
+- **Plat** (le modèle de référence) : il prédit juste la variante, sans rien savoir de la hiérarchie.
+- **3 têtes :** il fait 3 prédictions à partir de la même image (constructeur, famille, variante).
+- **Soft labels :** il prédit juste la variante aussi, mais à l'entraînement, une réponse proche de la bonne est moins pénalisée qu'une réponse complètement à côté.
 
-Les features fabriquées à la main (SIFT) sont remplacées par un **CNN pré-entraîné**, qui apprend lui-même ses features. Ce CNN est surmonté d'une tête par niveau de la hiérarchie.
+### Les résultats
 
-```mermaid
-flowchart LR
-    A[Image<br/>bandeau de copyright rogné] --> B[EfficientNet-B0<br/>pré-entraîné ImageNet]
-    B --> C[Vecteur de features]
-    C --> D[Tête constructeur<br/>30 classes]
-    C --> E[Tête famille<br/>70 classes]
-    C --> F[Tête variante<br/>100 classes]
-```
-
-- **Perte** : somme pondérée des cross-entropies des 3 têtes.
-- **Comparaison** : un modèle plat (une seule tête à 100 variantes) face au modèle hiérarchique.
-- **Évaluation** : accuracy par niveau, gravité des erreurs (distance dans la hiérarchie), cohérence des prédictions entre niveaux, Grad-CAM.
-
-### Résultats sur le test (moyenne de 3 graines)
+Sur le test (3 333 images que le modèle n'a jamais vues), en moyenne sur 3 entraînements avec des graines différentes :
 
 | | Plat | 3 têtes | Soft labels |
 |---|---|---|---|
-| Accuracy variante | 68,7 % | 69,6 % | 69,6 % |
-| Erreurs graves (autre constructeur) | 14,9 % | 12,4 % | 12,8 % |
-| Cohérence des 3 niveaux | 91,9 % | 83,7 % | 95,4 % |
+| Bonne variante | 68,7 % | 69,6 % | 69,6 % |
+| Bonne famille | 79,8 % | 81,8 % | 80,7 % |
+| Bon constructeur | 86,4 % | 85,9 % | 87,3 % |
+| Erreurs graves (mauvais constructeur) | 14,9 % | 12,4 % | 12,8 % |
+| Prédictions cohérentes entre les 3 niveaux | 91,9 % | 83,7 % | 95,4 % |
 
-La hiérarchie réduit les erreurs graves de 14 à 16 % sans coût sur l'accuracy. Les soft labels font aussi bien que les 3 têtes, avec des prédictions plus cohérentes.
+![Répartition des prédictions selon la gravité de l'erreur](projet1_avions/results/figures/test_gravite.png)
 
----
+Ce que j'en retiens :
 
-## ⚽ Projet 2 : détection des joueurs, arbitres et ballon
+- **Les erreurs graves baissent vraiment** avec les 2 modèles qui utilisent la hiérarchie (les intervalles de confiance excluent zéro).
+- **Le gain sur les variantes est petit** (environ 1 point), donc je ne m'appuie pas dessus.
+- **Je ne peux pas départager les 3 têtes et les soft labels** sur les erreurs. J'ai gardé les soft labels pour la démo : c'est plus simple (une seule tête) et le modèle à 3 têtes se contredit sur 16 % des images (par exemple une famille qui n'existe pas chez le constructeur prédit).
 
-L'objectif est de détecter et reconnaître les **joueurs**, les **arbitres** et le **ballon** sur des images de match filmées en plan large. Le ballon, qui ne fait que quelques pixels, est au centre du projet.
+Le modèle se trompe surtout sur des avions très proches, comme le C-47 et le DC-3 (le C-47 est la version militaire du DC-3).
 
-### Articles de référence
+### Où le modèle regarde
 
-**Redmon, J., Divvala, S., Girshick, R., & Farhadi, A. (2016). *You Only Look Once: Unified, Real-Time Object Detection*. CVPR 2016.**
-📄 [arXiv:1506.02640](https://arxiv.org/abs/1506.02640)
+Grad-CAM montre les zones de l'image qui ont le plus compté dans la prédiction. Sur ces images tirées au hasard, le modèle regarde en général l'avion, mais pour plusieurs erreurs graves il regarde le sol. Ça reste une observation sur 12 images, pas une preuve.
 
-- **Contribution** : la détection devient une seule régression. L'image est découpée en grille, et chaque cellule prédit des boîtes, un score de confiance et des probabilités de classe, en une seule passe du réseau.
-- **Limite reconnue par les auteurs** : les petits objets, surtout lorsqu'ils sont groupés.
+![Cartes Grad-CAM sur 12 images tirées au hasard](projet1_avions/results/figures/gradcam_planche.png)
 
-**Architecture utilisée dans l'article** :
+### Tester la démo
 
-```mermaid
-flowchart LR
-    A[Image<br/>448×448] --> B[24 couches convolutives<br/>inspirées de GoogLeNet<br/>1×1 puis 3×3]
-    B --> C[2 couches<br/>entièrement connectées]
-    C --> D[Tenseur 7×7×30<br/>grille S=7, B=2 boîtes,<br/>C=20 classes]
-```
-
-Une variante allégée, **Fast YOLO**, n'utilise que 9 couches convolutives.
-
-**Komorowski, J., Kurzejamski, G., & Sarwas, G. (2020). *FootAndBall: Integrated Player and Ball Detector*. VISAPP 2020.**
-📄 [arXiv:1912.05445](https://arxiv.org/abs/1912.05445)
-
-- **Contribution** : un détecteur joueurs et ballon conçu pour les vidéos de foot haute résolution en plan large.
-- **Idée clé** : combiner plusieurs échelles de features (Feature Pyramid Network) pour ne pas perdre le ballon, avec une tête dédiée au ballon sur une carte de features fine.
-- **Résultat** : meilleur que Faster R-CNN sur le ballon, en temps réel, avec environ 199 000 paramètres seulement.
-
-**Architecture utilisée dans l'article** :
-
-```mermaid
-flowchart LR
-    A[Image] --> B[5 blocs convolutifs<br/>conv 3×3, BatchNorm,<br/>ReLU, max pooling]
-    B --> C[Feature Pyramid Network<br/>fusion des échelles]
-    C --> D[Tête ballon<br/>carte de confiance, stride 4]
-    C --> E[Tête joueurs<br/>carte de confiance, stride 16]
-    C --> F[Régression des boîtes<br/>joueurs, stride 16]
-```
-
-### Approche de ce projet
-
-- **Modèle** : fine-tuning de **YOLO11** (Ultralytics), pré-entraîné sur COCO, sur 3 classes : joueur (gardiens inclus), arbitre, ballon.
-- **Expériences** : résolution d'entrée 640 contre 1280 px, taille du modèle (n contre s), inférence par tuiles (SAHI) pour le ballon.
-- **Évaluation** : mAP@50 et mAP@50-95 par classe, analyse des erreurs selon la taille des objets.
-
----
-
-## Environnement
-
-- Python 3.12 et PyTorch, avec le backend MPS (GPU Apple)
-- `timm`, `torchvision`, `ultralytics`, `scikit-learn`, `grad-cam`, `gradio`
+Le modèle est déjà dans le repo, pas besoin de télécharger le dataset ni de réentraîner. Il faut Python 3.12.
 
 ```bash
+git clone https://github.com/titouanfleurent-png/deep-learning-images.git
+cd deep-learning-images
 python3.12 -m venv .venv && source .venv/bin/activate
-pip install torch torchvision timm ultralytics supervision scikit-learn opencv-python grad-cam gradio matplotlib pandas tensorboard
-python check_env.py
+pip install -r requirements.txt
+cd projet1_avions && python app.py
 ```
 
-## Structure
+Ensuite, ouvre http://127.0.0.1:7860 et mets une photo d'avion. Je n'ai pas mesuré les performances sur des photos hors du dataset : les scores au-dessus ne valent que pour ce type de photos.
+
+### Refaire les entraînements
+
+Il faut 2,75 Go pour le téléchargement. Compte environ 40 min par entraînement sur un MacBook Air M4, sachant qu'il y en a 9. Depuis `projet1_avions/`, avec l'environnement activé :
+
+```bash
+./scripts/download_data.sh
+./scripts/run_all.sh
+python -m src.evaluate --split val
+python -m src.analyze --split val
+```
+
+Pour un seul modèle : `python -m src.train --model soft --seed 0`.
+
+J'ai utilisé le split test une seule fois, après avoir figé mes choix sur la validation ([le protocole](projet1_avions/results/protocole_fige.md)). Pour rester propre, garde le test pour la toute fin si tu changes quelque chose.
+
+### Les limites
+
+- J'ai testé une seule architecture et une seule résolution (224 px). Les différences entre variantes sont parfois trop fines à cette taille.
+- Je n'ai pas optimisé les poids de la hiérarchie dans les fonctions de perte.
+- 3 graines, c'est peu pour mesurer précisément la variabilité entre entraînements.
+
+### Les articles
+
+- **Maji et al. (2013)**, *Fine-Grained Visual Classification of Aircraft* ([arXiv](https://arxiv.org/abs/1306.5151)) : l'article du dataset.
+- **Bertinetto et al. (2020)**, *Making Better Mistakes* ([arXiv](https://arxiv.org/abs/1912.09393)) : l'idée de juger un modèle sur la gravité de ses erreurs, et les soft labels.
+
+---
+
+## Projet 2 : détecter les joueurs, les arbitres et le ballon
+
+Pas encore commencé. Le but est de détecter les joueurs, les arbitres et le ballon sur des images de match en plan large. Le plus dur, c'est le ballon, qui ne fait que quelques pixels.
+
+Ce que je prévois de tester avec YOLO11 (pré-entraîné sur COCO) :
+
+- une résolution de 640 ou de 1280 px ;
+- un modèle plus ou moins gros (n ou s) ;
+- le découpage de l'image en morceaux (SAHI) pour mieux trouver le ballon.
+
+### Les articles
+
+**Redmon et al. (2016)**, *You Only Look Once* ([arXiv](https://arxiv.org/abs/1506.02640)) : le réseau regarde l'image une seule fois et prédit directement les boîtes et les classes.
+
+```mermaid
+flowchart LR
+    A[Image<br/>448×448] --> B[24 couches convolutives]
+    B --> C[2 couches<br/>entièrement connectées]
+    C --> D[Grille 7×7<br/>boîtes + classes]
+```
+
+**Komorowski et al. (2020)**, *FootAndBall* ([arXiv](https://arxiv.org/abs/1912.05445)) : un détecteur fait pour le foot, avec une partie dédiée au ballon qui travaille sur une carte plus fine.
+
+```mermaid
+flowchart LR
+    A[Image] --> B[5 blocs convolutifs]
+    B --> C[Feature Pyramid Network<br/>fusion des échelles]
+    C --> D[Tête ballon<br/>stride 4]
+    C --> E[Tête joueurs<br/>stride 16]
+    C --> F[Boîtes des joueurs<br/>stride 16]
+```
+
+---
+
+## L'organisation du repo
 
 ```text
 .
-├── check_env.py          # vérification de l'environnement (bibliothèques + GPU MPS)
-├── projet1_avions/
-│   ├── data/             # FGVC-Aircraft (non versionné)
-│   ├── notebooks/        # exploration, visualisations
-│   ├── src/              # dataset, modèle, entraînement, évaluation
-│   ├── configs/
-│   └── runs/             # logs d'entraînement (non versionnés)
-└── projet2_foot/         # à venir
+├── requirements.txt
+└── projet1_avions/
+    ├── app.py        # la démo
+    ├── models/       # le modèle de la démo et les noms des classes
+    ├── notebooks/    # exploration, préparation, résultats
+    ├── report/       # le rapport en PDF
+    ├── results/      # scores, figures, protocole
+    ├── scripts/      # téléchargement des données, entraînements
+    └── src/          # dataset, modèle, entraînement, évaluation
 ```
+
+## Les données et les droits
+
+Les photos de FGVC-Aircraft appartiennent à leurs photographes et sont mises à disposition **uniquement pour de la recherche non commerciale** ([la page du dataset](https://www.robots.ox.ac.uk/~vgg/data/fgvc-aircraft/)). Elles ne sont pas dans ce repo, à part celles visibles dans les notebooks et les figures, et le même cadre vaut pour le modèle entraîné dessus.

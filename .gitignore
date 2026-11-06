@@ -14,3 +14,6 @@ __pycache__/
 *.docx
 ~$*
 _journal/
+
+# Exception : le modèle de la démo, pour la tester sans tout réentraîner
+!projet1_avions/models/**/best.pt
