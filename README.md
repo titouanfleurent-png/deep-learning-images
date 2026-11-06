@@ -7,8 +7,8 @@ Deux projets de vision par ordinateur réalisés dans le cadre d'un cours de dee
 | **Tâche** | Classification fine et hiérarchique | Détection d'objets |
 | **Question** | Un CNN qui exploite la hiérarchie des classes fait-il des erreurs moins graves ? | Pourquoi le ballon est-il si dur à détecter, et comment l'améliorer ? |
 | **Données** | FGVC-Aircraft | Roboflow *football-players-detection* |
-| **Modèle** | EfficientNet-B0 pré-entraîné, 3 têtes de classification | YOLO11 pré-entraîné sur COCO |
-| **Statut** | En cours | À venir |
+| **Modèle** | EfficientNet-B0 pré-entraîné : plat, 3 têtes, soft labels | YOLO11 pré-entraîné sur COCO |
+| **Statut** | Terminé (hors test sur photos externes) | À venir |
 
 ---
 
@@ -51,6 +51,16 @@ flowchart LR
 - **Perte** : somme pondérée des cross-entropies des 3 têtes.
 - **Comparaison** : un modèle plat (une seule tête à 100 variantes) face au modèle hiérarchique.
 - **Évaluation** : accuracy par niveau, gravité des erreurs (distance dans la hiérarchie), cohérence des prédictions entre niveaux, Grad-CAM.
+
+### Résultats sur le test (moyenne de 3 graines)
+
+| | Plat | 3 têtes | Soft labels |
+|---|---|---|---|
+| Accuracy variante | 68,7 % | 69,6 % | 69,6 % |
+| Erreurs graves (autre constructeur) | 14,9 % | 12,4 % | 12,8 % |
+| Cohérence des 3 niveaux | 91,9 % | 83,7 % | 95,4 % |
+
+La hiérarchie réduit les erreurs graves de 14 à 16 % sans coût sur l'accuracy. Les soft labels font aussi bien que les 3 têtes, avec des prédictions plus cohérentes.
 
 ---
 
