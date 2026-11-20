@@ -8,7 +8,7 @@ Mes 2 projets de deep learning pour mon cours au CNAM (vision par ordinateur, en
 | **Type de tâche** | Classification | Détection d'objets |
 | **Données** | FGVC-Aircraft | Roboflow *football-players-detection* |
 | **Modèle** | EfficientNet-B0 | YOLO11 |
-| **Où j'en suis** | Terminé | Pas encore commencé |
+| **Où j'en suis** | Terminé | En cours (entraînements) |
 
 ---
 
@@ -102,7 +102,23 @@ J'ai utilisé le split test une seule fois, après avoir figé mes choix sur la 
 
 ## Projet 2 : détecter les joueurs, les arbitres et le ballon
 
-Pas encore commencé. Le but est de détecter les joueurs, les arbitres et le ballon sur des images de match en plan large. Le plus dur, c'est le ballon, qui ne fait que quelques pixels.
+En cours. Le but est de détecter les joueurs, les arbitres et le ballon sur des images de match en plan large. Le plus dur, c'est le ballon, qui ne fait que quelques pixels.
+
+### Les données
+
+J'utilise le dataset Roboflow [football-players-detection](https://universe.roboflow.com/roboflow-jvuqo/football-players-detection-3zvbc/dataset/12) (version 12, licence CC BY 4.0) : 372 images en 1280 px, découpées en 298 pour l'entraînement, 49 pour la validation et 25 pour le test. J'ai fusionné les gardiens avec les joueurs, donc il reste 3 classes.
+
+| | Ballon | Joueur | Arbitre |
+|---|---|---|---|
+| Objets à l'entraînement | 258 | 6 185 | 690 |
+| Taille médiane vue par YOLO à 640 px | 5 px | 16 px | 14 px |
+| Taille médiane vue par YOLO à 1280 px | 10 px | 32 px | 29 px |
+
+À 640 px, 98 % des ballons font moins de 8 px. C'est pour ça que je compare 640 et 1280 px, et que je teste SAHI.
+
+![Taille des objets à 640 px](projet2_foot/results/figures/tailles_objets.png)
+
+Le détail est dans le [notebook d'exploration](projet2_foot/notebooks/01_exploration.ipynb), et l'avancement des entraînements dans le [notebook de suivi](projet2_foot/notebooks/02_suivi_entrainements.ipynb).
 
 Ce que je prévois de tester avec YOLO11 (pré-entraîné sur COCO) :
 
@@ -139,6 +155,7 @@ flowchart LR
 ```text
 .
 ├── requirements.txt
+├── projet2_foot/     # en cours : src/, notebooks/, results/, scripts/
 └── projet1_avions/
     ├── app.py        # la démo
     ├── models/       # le modèle de la démo et les noms des classes

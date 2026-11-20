@@ -1,0 +1,4 @@
+split,ball,player,referee,images
+train,258,6185,690,298
+valid,45,1012,117,49
+test,24,518,56,25
